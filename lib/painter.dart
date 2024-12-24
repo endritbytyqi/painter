@@ -97,12 +97,15 @@ class _PainterPainter extends CustomPainter {
 }
 
 class _PathHistory {
+  var redoPath = [];
   List<MapEntry<Path, Paint>> _paths;
   Paint currentPaint;
   Paint _backgroundPaint;
   bool _inDrag;
 
   bool get isEmpty => _paths.isEmpty || (_paths.length == 1 && _inDrag);
+  bool get hasPaths => _paths.isNotEmpty;
+  bool get hasPathsToRedo => redoPath.isNotEmpty;
 
   _PathHistory()
       : _paths = <MapEntry<Path, Paint>>[],
@@ -119,13 +122,28 @@ class _PathHistory {
 
   void undo() {
     if (!_inDrag) {
-      _paths.removeLast();
+      if (_paths.isNotEmpty) {
+        redoPath.add(_paths.last);
+        _paths.removeLast();
+      }
+      print("elements are ${redoPath.length}");
+      print("_paths elements are ${_paths.length}");
     }
+  }
+
+  void redo() {
+    _paths.add(redoPath.last);
+    redoPath.removeLast();
+    print("redo path are ${redoPath.length}");
+    print("_paths elements are ${_paths.length}");
   }
 
   void clear() {
     if (!_inDrag) {
       _paths.clear();
+      redoPath.clear();
+      print("elements of undo ${_paths.length}");
+      print("elements of redo ${redoPath.length}");
     }
   }
 
@@ -207,6 +225,9 @@ class PainterController extends ChangeNotifier {
   /// Creates a new instance for the use in a [Painter] widget.
   PainterController() : _pathHistory = new _PathHistory();
 
+// Public getter for _pathHistory
+  _PathHistory get pathHistory => _pathHistory;
+
   /// Returns true if nothing has been drawn yet.
   bool get isEmpty => _pathHistory.isEmpty;
 
@@ -269,6 +290,13 @@ class PainterController extends ChangeNotifier {
   void undo() {
     if (!isFinished()) {
       _pathHistory.undo();
+      notifyListeners();
+    }
+  }
+
+  void redo() {
+    if (!isFinished()) {
+      _pathHistory.redo();
       notifyListeners();
     }
   }
