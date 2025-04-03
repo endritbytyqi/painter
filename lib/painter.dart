@@ -46,11 +46,11 @@ class _PainterState extends State<Painter> {
     );
     child = new ClipRect(child: child);
     if (!_finished) {
-      child = new GestureDetector(
+      child = new Listener(
         child: child,
-        onPanStart: _onPanStart,
-        onPanUpdate: _onPanUpdate,
-        onPanEnd: _onPanEnd,
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
       );
     }
     return new Container(
@@ -60,23 +60,37 @@ class _PainterState extends State<Painter> {
     );
   }
 
-  void _onPanStart(DragStartDetails start) {
-    Offset pos = (context.findRenderObject() as RenderBox)
-        .globalToLocal(start.globalPosition);
-    widget.painterController._pathHistory.add(pos);
-    widget.painterController._notifyListeners();
+  // Track the active pointer
+  int? _activePointerId;
+
+  void _onPointerDown(PointerDownEvent event) {
+    // Only start drawing if no other pointer is active
+    if (_activePointerId == null) {
+      _activePointerId = event.pointer;
+      Offset pos = (context.findRenderObject() as RenderBox)
+          .globalToLocal(event.position);
+      widget.painterController._pathHistory.add(pos);
+      widget.painterController._notifyListeners();
+    }
   }
 
-  void _onPanUpdate(DragUpdateDetails update) {
-    Offset pos = (context.findRenderObject() as RenderBox)
-        .globalToLocal(update.globalPosition);
-    widget.painterController._pathHistory.updateCurrent(pos);
-    widget.painterController._notifyListeners();
+  void _onPointerMove(PointerMoveEvent event) {
+    // Only update if this is the active pointer
+    if (_activePointerId == event.pointer) {
+      Offset pos = (context.findRenderObject() as RenderBox)
+          .globalToLocal(event.position);
+      widget.painterController._pathHistory.updateCurrent(pos);
+      widget.painterController._notifyListeners();
+    }
   }
 
-  void _onPanEnd(DragEndDetails end) {
-    widget.painterController._pathHistory.endCurrent();
-    widget.painterController._notifyListeners();
+  void _onPointerUp(PointerUpEvent event) {
+    // Only end drawing if this is the active pointer
+    if (_activePointerId == event.pointer) {
+      _activePointerId = null;
+      widget.painterController._pathHistory.endCurrent();
+      widget.painterController._notifyListeners();
+    }
   }
 }
 
